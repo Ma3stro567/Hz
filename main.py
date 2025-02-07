@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.INFO)
 
 # Инициализация бота
-TOKEN = os.getenv("BOT_TOKEN")  # Токен из переменной окружения
+TOKEN = os.getenv("7926852495:AAFVySjZVau5_sxafIPKMeBRDFmehiIbDxI")  # Токен из переменной окружения
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 dp.middleware.setup(LoggingMiddleware())
