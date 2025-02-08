@@ -8,45 +8,55 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-# 🔹 Логгирование
+# Логгирование
 logging.basicConfig(level=logging.INFO)
 
-# 🔑 ВАЖНО! Вставьте ваш токен бота:
-TOKEN = "7926852495:AAFVySjZVau5_sxafIPKMeBRDFmehiIbDxI"  # ⬅ Замените на ваш токен!
-
-# 🔹 Инициализация бота
+# ВСТАВЬТЕ ВАШ ТОКЕН ЗДЕСЬ
+TOKEN = "7926852495:AAFVySjZVau5_sxafIPKMeBRDFmehiIbDxI"  # Замените на токен вашего бота
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 dp.middleware.setup(LoggingMiddleware())
 
-# 🔹 Данные пользователей
+# Данные
 user_data = defaultdict(lambda: {"balance": 0, "referrals": 0, "last_bonus": None})
-referral_links = {}
+admin_ids = [5083696616]  # Замените на ваш Telegram ID
 
-# 🔑 ID админа (ВАШ TELEGRAM ID)
-ADMIN_ID = 5083696616  # ⬅ Укажите ваш Telegram ID!
-
-# 🎯 Генерация реферальной ссылки
-def generate_referral_link(user_id):
-    return f"https://t.me/YourBotUsername?start=ref{user_id}"
-
-# 🎛 Главное меню
+# Главная клавиатура
 def main_menu():
     keyboard = InlineKeyboardMarkup(row_width=2)
-    keyboard.add(InlineKeyboardButton("🎮 Магазин", callback_data="shop"))
-    keyboard.add(InlineKeyboardButton("🏆 Топ-10", callback_data="top"))
-    keyboard.add(InlineKeyboardButton("📢 Реферальная система", callback_data="referral"))
-    keyboard.add(InlineKeyboardButton("🎁 Забрать бонус", callback_data="claim_bonus"))
-    keyboard.add(InlineKeyboardButton("👤 Профиль", callback_data="profile"))
+    keyboard.add(
+        InlineKeyboardButton("🎮 Магазин", callback_data="shop"),
+        InlineKeyboardButton("🏆 Топ-10", callback_data="top"),
+        InlineKeyboardButton("📢 Реферальная система", callback_data="referral"),
+        InlineKeyboardButton("🎁 Забрать бонус", callback_data="claim_bonus"),
+        InlineKeyboardButton("👤 Профиль", callback_data="profile")
+    )
     return keyboard
 
-# 🏠 Стартовая команда
+# Клавиатура профиля
+def profile_menu():
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        InlineKeyboardButton("поддержать разработку", url="https://t.me/xrocket?start=inv_GhSTKJGeBcaVcHg"),  # Ссылка на оплату
+        InlineKeyboardButton("🎮 Перейти в магазин", callback_data="shop"),   # Кнопка для перехода в магазин
+        InlineKeyboardButton("🔙 Назад", callback_data="back_main")
+    )
+    return keyboard
+
+# Проверка на бонус
+def can_claim_bonus(user_id):
+    last_bonus = user_data[user_id]["last_bonus"]
+    if last_bonus is None:
+        return True
+    return datetime.now() - last_bonus >= timedelta(hours=6)
+
+# Стартовое сообщение
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
     user_id = message.from_user.id
     args = message.get_args()
 
-    # 📢 Проверка на реферальный код
+    # Проверка на реферальный код
     if args and args.startswith("ref"):
         referrer_id = int(args[3:])
         if referrer_id != user_id:  # Нельзя пригласить самого себя
@@ -57,66 +67,98 @@ async def start_command(message: types.Message):
     user_data[user_id]["balance"] += 5  # Бонус за старт
     await message.answer("👋 Добро пожаловать! Ваши бонусные 5 Ma3coin за старт добавлены!", reply_markup=main_menu())
 
-# 👤 Профиль пользователя
+# Обработка профиля
 @dp.callback_query_handler(Text(equals="profile"))
 async def profile_handler(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     balance = user_data[user_id]["balance"]
     referrals = user_data[user_id]["referrals"]
-    await callback_query.message.edit_text(f"👤 Ваш профиль:\n💰 Баланс: {balance} Ma3coin\n👥 Рефералы: {referrals}", reply_markup=main_menu())
+    await callback_query.message.edit_text(
+        f"👤 Ваш профиль:\n"
+        f"💰 Баланс: {balance} Ma3coin\n"
+        f"👥 Количество рефералов: {referrals}\n",
+        reply_markup=profile_menu()
+    )
 
-# 🔑 **Админ-меню**
+# Обработка перехода в магазин
+@dp.callback_query_handler(Text(equals="shop"))
+async def shop_handler(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("🛒 Добро пожаловать в магазин!", reply_markup=main_menu())
+
+# Начисление бонусов
+@dp.callback_query_handler(Text(equals="claim_bonus"))
+async def claim_bonus_handler(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    if can_claim_bonus(user_id):
+        user_data[user_id]["balance"] += 3  # Бонус
+        user_data[user_id]["last_bonus"] = datetime.now()
+        await callback_query.message.edit_text("🎁 Вы успешно забрали бонус в 3 Ma3coin!", reply_markup=main_menu())
+    else:
+        await callback_query.message.edit_text("❌ Вы уже забирали бонус! Приходите позже.", reply_markup=main_menu())
+
+# Админ меню
 @dp.message_handler(commands=['creator148852'])
 async def admin_command(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
+    if message.from_user.id in admin_ids:
         await message.answer("🔑 Админ-меню:", reply_markup=admin_menu())
     else:
-        await message.answer("❌ У вас нет доступа.")
+        await message.answer("❌ У вас нет прав для доступа к этому меню.")
 
-# 🎛 Клавиатура админ-меню
+# Клавиатура админ меню
 def admin_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(InlineKeyboardButton("💰 Начислить монеты", callback_data="admin_add_balance"))
-    keyboard.add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
+    keyboard.add(
+        InlineKeyboardButton("💰 Начислить монеты", callback_data="admin_add_coins"),
+        InlineKeyboardButton("🔙 Назад", callback_data="back_main")
+    )
     return keyboard
 
-# 📩 Запрос ID пользователя для начисления монет
-@dp.callback_query_handler(Text(equals="admin_add_balance"))
-async def admin_add_balance(callback_query: types.CallbackQuery):
-    if callback_query.from_user.id == ADMIN_ID:
-        await callback_query.message.answer("🔹 Введите ID пользователя, которому хотите начислить монеты:")
-        await callback_query.answer()
+# Начисление монет (админ)
+@dp.callback_query_handler(Text(equals="admin_add_coins"))
+async def admin_add_coins(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("💰 Введите ID пользователя, которому хотите начислить монеты:")
+    await AdminStates.waiting_for_user_id.set()
 
-# 📥 Обработка ввода ID пользователя
-@dp.message_handler(lambda message: message.text.isdigit())
-async def get_user_id(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        user_id = int(message.text)
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+
+class AdminStates(StatesGroup):
+    waiting_for_user_id = State()
+    waiting_for_amount = State()
+
+@dp.message_handler(state=AdminStates.waiting_for_user_id)
+async def process_user_id(message: types.Message, state: FSMContext):
+    user_id = message.text.strip()
+    if user_id.isdigit():
+        user_id = int(user_id)
         if user_id in user_data:
-            user_data[message.from_user.id]["temp_user_id"] = user_id
-            await message.answer(f"✅ Пользователь {user_id} найден! Введите сумму для начисления:")
+            await state.update_data(user_id=user_id)
+            await message.answer("✅ Пользователь найден! Введите сумму для начисления:")
+            await AdminStates.waiting_for_amount.set()
         else:
-            await message.answer("❌ Пользователь не найден.")
+            await message.answer("❌ Пользователь не найден. Попробуйте снова:")
+    else:
+        await message.answer("❌ Неверный ID. Попробуйте снова:")
 
-# 📥 Обработка ввода суммы
-@dp.message_handler(lambda message: message.text.replace('.', '', 1).isdigit())
-async def add_balance(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        temp_user_id = user_data[message.from_user.id].get("temp_user_id")
-        if temp_user_id:
-            amount = float(message.text)
-            user_data[temp_user_id]["balance"] += amount
-            await message.answer(f"✅ Начислено {amount} Ma3coin пользователю {temp_user_id}!")
-            user_data[message.from_user.id].pop("temp_user_id", None)
+@dp.message_handler(state=AdminStates.waiting_for_amount)
+async def process_amount(message: types.Message, state: FSMContext):
+    amount = message.text.strip()
+    if amount.isdigit():
+        amount = int(amount)
+        data = await state.get_data()
+        user_id = data['user_id']
+        user_data[user_id]["balance"] += amount
+        await message.answer(f"✅ Успешно начислено {amount} Ma3coin пользователю {user_id}.", reply_markup=main_menu())
+        await state.finish()
+    else:
+        await message.answer("❌ Неверная сумма. Попробуйте снова:")
 
-# 🔄 Бесконечный цикл для Render (чтобы бот не выключался)
+# Бесконечный цикл
 async def keep_alive():
     while True:
-        await asyncio.sleep(60)  # Каждую минуту
+        await asyncio.sleep(60)
 
-# 🚀 Запуск бота
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.create_task(keep_alive())  # ⬅ Поддержка работы на Render
+    loop.create_task(keep_alive())  # Бесконечный цикл
     executor.start_polling(dp, skip_updates=True)
-    
