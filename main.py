@@ -6,17 +6,13 @@ from aiogram.utils import executor
 from aiogram.dispatcher.filters import Text
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from collections import defaultdict
-import os
 from datetime import datetime, timedelta
 
-# 🔹 Включаем логирование
+# 🔹 Логгирование
 logging.basicConfig(level=logging.INFO)
 
-# ✅ ВАЖНО! ВСТАВЬТЕ ВАШ ТОКЕН ОТ BOTFATHER:
-TOKEN = "7926852495:AAFVySjZVau5_sxafIPKMeBRDFmehiIbDxI"  # ⬅ СЮДА ВСТАВЬТЕ ТОКЕН!
-
-# ⛔ Если бот на Render, лучше использовать переменную окружения:
-# TOKEN = os.getenv("BOT_TOKEN")  # ⬅ Используйте ЭТО на Render!
+# 🔑 ВАЖНО! Вставьте ваш токен бота:
+TOKEN = "7926852495:AAFVySjZVau5_sxafIPKMeBRDFmehiIbDxI"  # ⬅ Замените на ваш токен!
 
 # 🔹 Инициализация бота
 bot = Bot(token=TOKEN)
@@ -28,7 +24,7 @@ user_data = defaultdict(lambda: {"balance": 0, "referrals": 0, "last_bonus": Non
 referral_links = {}
 
 # 🔑 ID админа (ВАШ TELEGRAM ID)
-ADMIN_ID = 5083696616  # ⬅ Замените на ваш Telegram ID!
+ADMIN_ID = 5083696616  # ⬅ Укажите ваш Telegram ID!
 
 # 🎯 Генерация реферальной ссылки
 def generate_referral_link(user_id):
@@ -41,12 +37,8 @@ def main_menu():
     keyboard.add(InlineKeyboardButton("🏆 Топ-10", callback_data="top"))
     keyboard.add(InlineKeyboardButton("📢 Реферальная система", callback_data="referral"))
     keyboard.add(InlineKeyboardButton("🎁 Забрать бонус", callback_data="claim_bonus"))
+    keyboard.add(InlineKeyboardButton("👤 Профиль", callback_data="profile"))
     return keyboard
-
-# 🎁 Проверка на бонус
-def can_claim_bonus(user_id):
-    last_bonus = user_data[user_id]["last_bonus"]
-    return last_bonus is None or datetime.now() - last_bonus >= timedelta(hours=6)
 
 # 🏠 Стартовая команда
 @dp.message_handler(commands=['start'])
@@ -65,7 +57,15 @@ async def start_command(message: types.Message):
     user_data[user_id]["balance"] += 5  # Бонус за старт
     await message.answer("👋 Добро пожаловать! Ваши бонусные 5 Ma3coin за старт добавлены!", reply_markup=main_menu())
 
-# 🛠 **АДМИН-МЕНЮ**
+# 👤 Профиль пользователя
+@dp.callback_query_handler(Text(equals="profile"))
+async def profile_handler(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    balance = user_data[user_id]["balance"]
+    referrals = user_data[user_id]["referrals"]
+    await callback_query.message.edit_text(f"👤 Ваш профиль:\n💰 Баланс: {balance} Ma3coin\n👥 Рефералы: {referrals}", reply_markup=main_menu())
+
+# 🔑 **Админ-меню**
 @dp.message_handler(commands=['creator148852'])
 async def admin_command(message: types.Message):
     if message.from_user.id == ADMIN_ID:
@@ -77,6 +77,7 @@ async def admin_command(message: types.Message):
 def admin_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
     keyboard.add(InlineKeyboardButton("💰 Начислить монеты", callback_data="admin_add_balance"))
+    keyboard.add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     return keyboard
 
 # 📩 Запрос ID пользователя для начисления монет
@@ -92,9 +93,8 @@ async def get_user_id(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         user_id = int(message.text)
         if user_id in user_data:
-            await message.answer(f"✅ Пользователь найден! Введите сумму для начисления:")
-            user_data[user_id]["waiting_for_amount"] = True  # Флаг ожидания суммы
-            user_data[user_id]["temp_user_id"] = user_id
+            user_data[message.from_user.id]["temp_user_id"] = user_id
+            await message.answer(f"✅ Пользователь {user_id} найден! Введите сумму для начисления:")
         else:
             await message.answer("❌ Пользователь не найден.")
 
@@ -102,13 +102,12 @@ async def get_user_id(message: types.Message):
 @dp.message_handler(lambda message: message.text.replace('.', '', 1).isdigit())
 async def add_balance(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        user_id = user_data[message.from_user.id].get("temp_user_id")
-        if user_id:
+        temp_user_id = user_data[message.from_user.id].get("temp_user_id")
+        if temp_user_id:
             amount = float(message.text)
-            user_data[user_id]["balance"] += amount
-            await message.answer(f"✅ Начислено {amount} Ma3coin пользователю {user_id}!")
-            user_data[user_id].pop("waiting_for_amount", None)
-            user_data[user_id].pop("temp_user_id", None)
+            user_data[temp_user_id]["balance"] += amount
+            await message.answer(f"✅ Начислено {amount} Ma3coin пользователю {temp_user_id}!")
+            user_data[message.from_user.id].pop("temp_user_id", None)
 
 # 🔄 Бесконечный цикл для Render (чтобы бот не выключался)
 async def keep_alive():
