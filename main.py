@@ -4,14 +4,14 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
 
-API_TOKEN = '7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE'
+API_TOKEN = '7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE'  # Вставь сюда токен
+ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-users = {}  # user_id: {clicks, upgrades, cooldown, clicks_in_row, referrals}
-ref_links = {}  # ref_code: user_id
-
+users = {}
+admin_sessions = {}
 
 def get_main_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -33,7 +33,8 @@ async def start_handler(message: types.Message):
             'upgrades': 1,
             'cooldown': 0,
             'clicks_in_row': 0,
-            'referrals': 0
+            'referrals': 0,
+            'in_pause': False
         }
 
         if ref.isdigit() and int(ref) in users and int(ref) != user_id:
@@ -47,13 +48,20 @@ async def start_handler(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data == 'click')
 async def click_handler(callback: types.CallbackQuery):
     user = users[callback.from_user.id]
+
+    if user.get('in_pause'):
+        await callback.answer("⌛ Подожди немного...")
+        return
+
     user['clicks'] += user['upgrades']
     user['clicks_in_row'] += 1
 
     if user['clicks_in_row'] >= 10:
-        await callback.answer("⌛ Пауза 3 секунды...")
+        user['in_pause'] = True
+        await callback.answer("⏳ Пауза 3 секунды...")
         await asyncio.sleep(3)
         user['clicks_in_row'] = 0
+        user['in_pause'] = False
 
     await callback.message.edit_text(f"🖱️ Ты накликал: {user['clicks']} кликов", reply_markup=get_main_kb())
 
@@ -113,11 +121,15 @@ async def tops_handler(callback: types.CallbackQuery):
 
     text = "🏆 Топ по кликам:\n"
     for i, (uid, data) in enumerate(top_clicks, start=1):
-        text += f"{i}. {uid} — {data['clicks']} кликов\n"
+        user = await bot.get_chat(uid)
+        name = f"@{user.username}" if user.username else user.full_name
+        text += f"{i}. {name} — {data['clicks']} кликов\n"
 
     text += "\n👥 Топ по рефералам:\n"
     for i, (uid, data) in enumerate(top_refs, start=1):
-        text += f"{i}. {uid} — {data['referrals']} рефералов\n"
+        user = await bot.get_chat(uid)
+        name = f"@{user.username}" if user.username else user.full_name
+        text += f"{i}. {name} — {data['referrals']} рефералов\n"
 
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
@@ -126,7 +138,7 @@ async def tops_handler(callback: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == 'referral')
 async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    link = f"https://t.me/clicker767bot?start={user_id}"
+    link = f"https://t.me/clicker767bot?start={user_id}"  # Вставь юзернейм своего бота
     text = f"🎁 Приглашай друзей по ссылке:\n{link}\n\nЗа каждого друга — 100 кликов!"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
@@ -137,6 +149,57 @@ async def back_main(callback: types.CallbackQuery):
     await callback.message.edit_text("Вы вернулись в главное меню 🏠", reply_markup=get_main_kb())
 
 
+# ---------- Админка ----------
+
+@dp.message_handler(commands=['adminpanel'])
+async def admin_panel(message: types.Message):
+    await message.answer("🔐 Введите пароль:")
+    admin_sessions[message.from_user.id] = {'stage': 'await_password'}
+
+
+@dp.message_handler()
+async def admin_logic(message: types.Message):
+    uid = message.from_user.id
+    if uid not in admin_sessions:
+        return
+
+    session = admin_sessions[uid]
+
+    if session['stage'] == 'await_password':
+        if message.text == ADMIN_PASSWORD:
+            session['stage'] = 'await_username'
+            await message.answer("✅ Пароль верный!\nВведите @юзернейм пользователя, которому хотите выдать клики:")
+        else:
+            del admin_sessions[uid]
+            await message.answer("❌ Неверный пароль!")
+
+    elif session['stage'] == 'await_username':
+        if message.text.startswith("@"):
+            session['username'] = message.text[1:]
+            session['stage'] = 'await_amount'
+            await message.answer(f"Сколько кликов выдать @{session['username']}?")
+        else:
+            await message.answer("❗ Введите юзернейм с @")
+
+    elif session['stage'] == 'await_amount':
+        try:
+            amount = int(message.text)
+            session['amount'] = amount
+
+            # ищем по юзернейму
+            for uid_, data in users.items():
+                chat = await bot.get_chat(uid_)
+                if chat.username == session['username']:
+                    users[uid_]['clicks'] += amount
+                    await message.answer(f"✅ Выдано {amount} кликов пользователю @{session['username']}")
+                    break
+            else:
+                await message.answer("❌ Пользователь не найден.")
+
+            del admin_sessions[uid]
+        except ValueError:
+            await message.answer("Введите число кликов.")
+
+
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
-    
