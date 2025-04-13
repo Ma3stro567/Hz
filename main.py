@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
 
-API_TOKEN = 'YOUR_BOT_TOKEN'  # Вставь сюда токен
+API_TOKEN = '7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE'  # Вставь сюда токен
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
@@ -174,7 +174,7 @@ async def tops_handler(callback: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == 'referral')
 async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    link = f"https://t.me/YOUR_BOT_USERNAME?start={user_id}"
+    link = f"https://t.me/clicker767?start={user_id}"
     text = f"🎁 Приглашай друзей по ссылке:\n{link}\n\nЗа каждого друга — 100 кликов!"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
