@@ -179,7 +179,7 @@ async def tops_handler(callback: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == 'referral')
 async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    link = f"https://t.me/{bot.username}?start={user_id}"
+    link = f"https://t.me/{clicker767}?start={user_id}"
     text = f"🎁 Приглашай друзей по ссылке:\n{link}\n\nЗа каждого друга — 100 кликов!"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
