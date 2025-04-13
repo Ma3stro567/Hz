@@ -1,15 +1,18 @@
+import os
 import asyncio
 import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
 
-API_TOKEN = '7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE'  # Вставь сюда токен
+# Читаем токен из переменной окружения (если переменная не задана, можно указать токен напрямую)
+API_TOKEN = os.getenv("API_TOKEN", "YOUR_API_TOKEN_HERE")
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+# Словари для хранения информации о пользователях, автозадачах и админ-сессиях
 users = {}
 auto_tasks = {}
 admin_sessions = {}
@@ -22,6 +25,7 @@ def get_main_kb():
         [InlineKeyboardButton("🎁 Рефералка", callback_data="referral")]
     ])
 
+# ----- Обработчик команды /start -----
 @dp.message_handler(commands=['start'])
 async def start_handler(message: types.Message):
     ref = message.get_args()
@@ -37,7 +41,6 @@ async def start_handler(message: types.Message):
             'in_pause': False,
             'autoclick': 0
         }
-
         if ref.isdigit() and int(ref) in users and int(ref) != user_id:
             users[int(ref)]['clicks'] += 100
             users[int(ref)]['referrals'] += 1
@@ -54,6 +57,7 @@ async def update_main_menu(callback, user_id):
     )
     await callback.message.edit_text(msg, reply_markup=get_main_kb())
 
+# ----- Обработчик кнопки "Клик" -----
 @dp.callback_query_handler(lambda c: c.data == 'click')
 async def click_handler(callback: types.CallbackQuery):
     user = users[callback.from_user.id]
@@ -70,6 +74,7 @@ async def click_handler(callback: types.CallbackQuery):
         user['in_pause'] = False
     await update_main_menu(callback, callback.from_user.id)
 
+# ----- Магазин -----
 @dp.callback_query_handler(lambda c: c.data == 'shop')
 async def shop_handler(callback: types.CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -160,13 +165,13 @@ async def tops_handler(callback: types.CallbackQuery):
     top_refs = sorted(users.items(), key=lambda x: x[1]['referrals'], reverse=True)[:5]
     text = "🏆 Топ по кликам:\n"
     for i, (uid, data) in enumerate(top_clicks, start=1):
-        user = await bot.get_chat(uid)
-        name = f"@{user.username}" if user.username else user.full_name
+        chat = await bot.get_chat(uid)
+        name = f"@{chat.username}" if chat.username else chat.full_name
         text += f"{i}. {name} — {data['clicks']} кликов\n"
     text += "\n👥 Топ по рефералам:\n"
     for i, (uid, data) in enumerate(top_refs, start=1):
-        user = await bot.get_chat(uid)
-        name = f"@{user.username}" if user.username else user.full_name
+        chat = await bot.get_chat(uid)
+        name = f"@{chat.username}" if chat.username else chat.full_name
         text += f"{i}. {name} — {data['referrals']} рефералов\n"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
@@ -174,7 +179,7 @@ async def tops_handler(callback: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == 'referral')
 async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    link = f"https://t.me/clicker767bot?start={user_id}"
+    link = f"https://t.me/{bot.username}?start={user_id}"
     text = f"🎁 Приглашай друзей по ссылке:\n{link}\n\nЗа каждого друга — 100 кликов!"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
@@ -183,7 +188,7 @@ async def referral_handler(callback: types.CallbackQuery):
 async def back_main(callback: types.CallbackQuery):
     await update_main_menu(callback, callback.from_user.id)
 
-# ---------- Админка ----------
+# ----- Админ-панель -----
 @dp.message_handler(commands=['adminpanel'])
 async def admin_panel(message: types.Message):
     await message.answer("🔐 Введите пароль:")
@@ -198,12 +203,12 @@ async def admin_logic(message: types.Message):
     if session['stage'] == 'await_password':
         if message.text == ADMIN_PASSWORD:
             session['stage'] = 'await_action'
-            session['actions'] = {}
             kb = InlineKeyboardMarkup()
+            # Формируем кнопки для всех пользователей (даже если у них нет username)
             for uid_, data in users.items():
                 chat = await bot.get_chat(uid_)
-                if chat.username:
-                    kb.add(InlineKeyboardButton(f"@{chat.username}", callback_data=f"admin_add:{chat.username}"))
+                name = f"@{chat.username}" if chat.username else f"{chat.full_name} ({uid_})"
+                kb.add(InlineKeyboardButton(name, callback_data=f"admin_add:{uid_}"))
             kb.add(InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"))
             await message.answer("🛠 Админ-панель:", reply_markup=kb)
         else:
@@ -212,23 +217,23 @@ async def admin_logic(message: types.Message):
     elif session['stage'] == 'await_amount':
         try:
             amount = int(message.text)
-            for uid_, data in users.items():
-                chat = await bot.get_chat(uid_)
-                if chat.username == session['target']:
-                    users[uid_]['clicks'] += amount
-                    await message.answer(f"✅ @{session['target']} получил {amount} кликов.")
-                    break
+            target_id = int(session['target'])
+            if target_id in users:
+                users[target_id]['clicks'] += amount
+                target_chat = await bot.get_chat(target_id)
+                name = f"@{target_chat.username}" if target_chat.username else target_chat.full_name
+                await message.answer(f"✅ {name} получил {amount} кликов.")
             else:
                 await message.answer("❌ Пользователь не найден.")
             del admin_sessions[uid]
-        except:
+        except Exception as e:
             await message.answer("❗ Введите число кликов")
     elif session['stage'] == 'broadcast':
         text = message.text
         for uid_ in users:
             try:
                 await bot.send_message(uid_, text)
-            except:
+            except Exception as e:
                 continue
         await message.answer("✅ Рассылка завершена.")
         del admin_sessions[uid]
@@ -239,13 +244,23 @@ async def admin_buttons(callback: types.CallbackQuery):
     if uid not in admin_sessions:
         return
     if callback.data.startswith("admin_add:"):
-        username = callback.data.split(":")[1]
-        admin_sessions[uid] = {'stage': 'await_amount', 'target': username}
-        await callback.message.edit_text(f"Введите сколько кликов добавить для @{username}")
+        target_id = callback.data.split("admin_add:")[1]
+        admin_sessions[uid] = {'stage': 'await_amount', 'target': target_id}
+        target_chat = await bot.get_chat(int(target_id))
+        name = f"@{target_chat.username}" if target_chat.username else target_chat.full_name
+        await callback.message.edit_text(f"Введите сколько кликов добавить для {name}.")
     elif callback.data == "admin_broadcast":
         admin_sessions[uid] = {'stage': 'broadcast'}
         await callback.message.edit_text("Введите текст рассылки:")
 
+# ----- Фоновая задача: бесконечный цикл -----
+async def keep_alive():
+    while True:
+        await asyncio.sleep(3600)  # Засыпаем на 1 час
+
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    # Запускаем фоновую задачу, которая будет работать бесконечно
+    loop.create_task(keep_alive())
+    # Запуск бота через polling (опрос обновлений)
     executor.start_polling(dp, skip_updates=True)
-    
