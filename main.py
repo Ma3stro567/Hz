@@ -8,7 +8,7 @@ from aiogram.utils import executor
 from aiogram.dispatcher.middlewares import BaseMiddleware
 
 # Вставляем токен напрямую (в production лучше использовать переменные окружения)
-API_TOKEN = "7667087861:AAHurciPv0XbNtxiF4ZqMyevKWwQC1T91zw"
+API_TOKEN = "7667087861:AAHGKxS_UnlTlE-LwuVhYxeFv4v2Gr7xG4A"
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
