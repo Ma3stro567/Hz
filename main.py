@@ -77,7 +77,7 @@ async def shop_handler(callback: types.CallbackQuery):
         [InlineKeyboardButton("⚡ Уменьшить задержку — 3000", callback_data="reduce_cd")],
         [InlineKeyboardButton("🎲 Секретный бокс — 400", callback_data="secret_box")],
         [InlineKeyboardButton("🤖 Автоклик — 200", callback_data="buy_autoclick")],
-        [InlineKeyboardButton("🔁 Улучшить автоклик x2 — цена растет", callback_data="upgrade_autoclick")],
+        [InlineKeyboardButton("🔁 Улучшить автоклик x2", callback_data="upgrade_autoclick")],
         [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
     ])
     await callback.message.edit_text("🛒 Магазин улучшений:", reply_markup=kb)
