@@ -5,8 +5,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
 
-# Читаем токен из переменной окружения (если переменная не задана, можно указать токен напрямую)
-API_TOKEN = os.getenv("API_TOKEN", "YOUR_API_TOKEN_HERE")
+# Токен бота вставлен напрямую (небезопасно для production-окружения)
+API_TOKEN = "7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE"
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
