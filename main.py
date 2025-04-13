@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
 
 # Токен бота вставлен напрямую (небезопасно для production-окружения)
-API_TOKEN = "7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE"
+API_TOKEN = "7667087861:AAHF20MiMg0BrR_Fd3nlXFTsniqbxHd3JZc"
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
