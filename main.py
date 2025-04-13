@@ -8,7 +8,7 @@ from aiogram.utils import executor
 from aiogram.dispatcher.middlewares import BaseMiddleware
 
 # Вставляем токен напрямую (в production рекомендуется использовать переменные окружения)
-API_TOKEN = "7667087861:AAHXJMGx0iJhzjAM1HCSj8y4hs7iQb7TMww"
+API_TOKEN = "7667087861:AAGloScjJqqaby3eklIzKDiEldeAaJRxoDE"
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
@@ -210,12 +210,20 @@ async def tops_handler(callback: types.CallbackQuery):
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
     await callback.message.edit_text(text, reply_markup=kb)
 
+# ----- Обработчик реферальной системы (исправленный) -----
 @dp.callback_query_handler(lambda c: c.data == 'referral')
 async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    link = f"https://t.me/{clicker767}?start={user_id}"
-    text = f"🎁 Приглашай друзей по ссылке:\n{link}\n\nЗа каждого друга — 100 кликов!"
-    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Назад", callback_data="back_main"))
+    bot_info = await bot.get_me()
+    username = bot_info.username  # гарантия получения актуального username бота
+    link = f"https://t.me/{username}?start={user_id}"
+    text = (
+        f"🎁 Приглашай друзей по ссылке:\n{link}\n\n"
+        "За каждого друга — 100 кликов!"
+    )
+    kb = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("🔙 Назад", callback_data="back_main")
+    )
     await callback.message.edit_text(text, reply_markup=kb)
 
 @dp.callback_query_handler(lambda c: c.data == 'back_main')
