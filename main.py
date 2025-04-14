@@ -8,7 +8,7 @@ from aiogram.utils import executor
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiohttp import web  # <-- добавлено для пинг-сервера
 
-API_TOKEN = "7667087861:AAHeg4MpbgJ_pMZ6kc4YcuOiqqsY6u3Bpuw"
+API_TOKEN = "7667087861:AAGiOVMxkhnRzV6ucpQdEn9rHGJ0gS6Ad_U"
 ADMIN_PASSWORD = "popopo12"
 
 bot = Bot(token=API_TOKEN)
