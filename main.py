@@ -216,7 +216,7 @@ async def referral_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     bot_info = await bot.get_me()
     username = bot_info.username  # гарантия получения актуального username бота
-    link = f"https://t.me/{clicker767}?start={user_id}"
+    link = f"https://t.me/{username}?start={user_id}"
     text = (
         f"🎁 Приглашай друзей по ссылке:\n{link}\n\n"
         "За каждого друга — 100 кликов!"
