@@ -1,15 +1,41 @@
 import requests
 from bs4 import BeautifulSoup
-from telegram import Bot
+from telegram import Bot, Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
 from datetime import datetime
 import time
+import os
 
 # ==== НАСТРОЙКИ ====
 TELEGRAM_BOT_TOKEN = '7707125232:AAFjvlOQkC6mgiiwi-a3w26Q1BN12Ijc4JE'
-TELEGRAM_CHAT_ID = '5083696616'
 CHECK_INTERVAL_SECONDS = 1
+USERS_FILE = "users.txt"
 
-# ==== ФУНКЦИИ ====
+# ==== ХРАНЕНИЕ ПОЛЬЗОВАТЕЛЕЙ ====
+def load_users():
+    try:
+        with open(USERS_FILE, "r") as f:
+            return set(map(int, f.read().splitlines()))
+    except:
+        return set()
+
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        for user_id in users:
+            f.write(str(user_id) + "\n")
+
+users = load_users()
+
+# ==== ОБРАБОТЧИК /start ====
+def start(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    if chat_id not in users:
+        users.add(chat_id)
+        save_users(users)
+        print(f"➕ Новый пользователь: {chat_id}")
+    context.bot.send_message(chat_id=chat_id, text="✅ Вы подписались на уведомления!")
+
+# ==== ПАРСИНГ ====
 def get_stock():
     url = 'https://www.vulcanvalues.com/grow-a-garden/stock'
     headers = {'User-Agent': 'Mozilla/5.0'}
@@ -30,10 +56,17 @@ def get_stock():
 
     return "\n\n".join(stock_text)
 
+# ==== ОТПРАВКА СООБЩЕНИЙ ====
 def send_telegram_message(text):
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=text)
+    for user_id in users:
+        try:
+            bot.send_message(chat_id=user_id, text=text)
+            print(f"✅ Сообщение отправлено: {user_id}")
+        except Exception as e:
+            print(f"❌ Ошибка отправки пользователю {user_id}: {e}")
 
+# ==== ОЖИДАНИЕ ВРЕМЕНИ ====
 def wait_for_exact_5_minute_mark():
     while True:
         now = datetime.now()
@@ -43,7 +76,13 @@ def wait_for_exact_5_minute_mark():
 
 # ==== ОСНОВНОЙ ЦИКЛ ====
 def main():
-    print("Бот запущен.")
+    global users
+    updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    updater.start_polling()
+    print("🤖 Бот запущен.")
+    
     last_sent = ""
 
     while True:
@@ -56,6 +95,7 @@ def main():
                 last_sent = stock
         except Exception as e:
             print("❌ Ошибка:", e)
+
         time.sleep(1)
 
 if __name__ == '__main__':
