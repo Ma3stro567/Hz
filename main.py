@@ -7,7 +7,7 @@ import time
 import os
 
 # ==== НАСТРОЙКИ ====
-TELEGRAM_BOT_TOKEN = '7707125232:AAFjvlOQkC6mgiiwi-a3w26Q1BN12Ijc4JE'
+TELEGRAM_BOT_TOKEN = '7707125232:AAETPJkoA5RwFyYV5edq-nO11cR0hrJA4Sk'
 CHECK_INTERVAL_SECONDS = 1
 USERS_FILE = "users.txt"
 
