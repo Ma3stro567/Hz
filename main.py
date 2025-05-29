@@ -5,8 +5,8 @@ from datetime import datetime
 import time
 
 # ==== НАСТРОЙКИ ====
-TELEGRAM_BOT_TOKEN = 'PASTE_YOUR_TOKEN_HERE'
-TELEGRAM_CHAT_ID = 'PASTE_YOUR_CHAT_ID_HERE'
+TELEGRAM_BOT_TOKEN = '7707125232:AAFjvlOQkC6mgiiwi-a3w26Q1BN12Ijc4JE'
+TELEGRAM_CHAT_ID = '5083696616'
 CHECK_INTERVAL_SECONDS = 1
 
 # ==== ФУНКЦИИ ====
